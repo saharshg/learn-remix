@@ -13,9 +13,10 @@ import {
   useNavigation,
 } from '@remix-run/react';
 
-import type { LinksFunction } from '@remix-run/node';
+import type { LinksFunction, LoaderFunctionArgs } from '@remix-run/node';
 
 // existing imports
+import { useEffect } from 'react';
 
 import { createEmptyContact, getContacts } from './data';
 import appStylesHref from './app.css';
@@ -27,9 +28,11 @@ export const action = async () => {
   return redirect(`/contacts/${contact.id}/edit`);
 };
 
-export const loader = async () => {
-  const contacts = await getContacts();
-  return json({ contacts });
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get('q');
+  const contacts = await getContacts(q);
+  return json({ contacts, q });
 };
 
 export const links: LinksFunction = () => [
@@ -37,8 +40,15 @@ export const links: LinksFunction = () => [
 ];
 
 export default function App() {
-  const { contacts } = useLoaderData<typeof loader>();
+  const { contacts, q } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+
+  useEffect(() => {
+    const searchField = document.getElementById('q');
+    if (searchField instanceof HTMLInputElement) {
+      searchField.value = q || '';
+    }
+  }, [q]);
 
   return (
     <html lang='en'>
@@ -54,6 +64,7 @@ export default function App() {
           <div>
             <Form id='search-form' role='search'>
               <input
+                defaultValue={q || ''}
                 id='q'
                 aria-label='Search contacts'
                 placeholder='Search'
